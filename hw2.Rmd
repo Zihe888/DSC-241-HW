@@ -1,5 +1,5 @@
 ---
-title: "DSC241 HW1"
+title: "DSC241 HW2"
 author:
 - Zihe Liu
 - A59026217
