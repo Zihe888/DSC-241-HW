@@ -1,0 +1,146 @@
+---
+title: "DSC241 HW1"
+author:
+  - Zihe Liu
+  - A59026217
+output: 
+  pdf_document:
+    latex_engine: xelatex
+date: "2024-01-19"
+---
+
+
+\includegraphics[angle=270]{/D/hw1.jpg}
+
+# Write a function confBand(x,y,conf=0.95) that takes as inputs a predictor vector x = (x1, . . . , xn) and a response vector y = (y1, . . . , yn), and returns a plot with the points (x1, y1), . . . ,(xn, yn), the least squares line, and two confidence bands: pointwise and simultaneous, both at their corresponding level conf.
+
+# Apply your function to the regression of mpg on hp in the 04cars dataset and explain the result.
+```{r}
+# load libraries
+library("ggplot2")
+# library("MASS")
+# library(dplyr) 
+```
+
+```{r}
+# Function to plot the points (x1, y1), . . . ,(xn, yn), the least squares line, and two confidence bands: pointwise and simultaneous
+confBand <- function(x, y, conf = 0.95) {
+  
+  # compute linear model 
+  Model <- as.formula(y ~ x)
+  fit1 <- lm(Model) 
+  
+  # compute design matrix 
+  X1 <- model.matrix(fit1) 
+  
+  # general linear hypotheses 
+  cht1 <- multcomp::glht(fit1, linfct = X1)  
+  
+  # simultaneous confidence bands 
+  data <- data.frame(x, y)
+  # sim_CB <- simultaneous_CBs(fit1, data)
+  
+  l = length(x)
+  alpha = 1 - conf
+  alpha1 = alpha/l
+  # Plot setosa data with simultaneous confidence bands
+  ggplot(data = data, aes(x = x, y = y)) +
+    geom_point() +
+    geom_smooth(aes(color = "Least Squares Line"), method = "lm", formula = y ~ x, level = conf) +
+    geom_smooth(aes(fill = "Simultaneous Confidence Bands"), method = "lm", formula = y ~ x, level = 1 - alpha1) +
+    labs(x = "hp", y = "mpg", title = "Linear Model with Confidence Bands") +
+    ggtitle("04cars Dataset in the Least Squares Line with Pointwise and Simultaneous Confidence Bands") +
+    scale_color_manual(values = "black", name = "Legend", labels = "Pointwise Confidence Bands") +
+    scale_fill_manual(values = "lightgray", name = "Legend", labels = "Simultaneous Confidence Bands")
+}
+```
+
+```{r}
+#Load '04cars' dataset
+#tmp = as.data.frame(tmp)
+#names(tmp) = c("hp","mpg","wt","len","wd") # abbreviate names
+#file_path <- "D:/Liuuu/Graduate@UCSD/Courses/winter/DSC_241_Statistical Models/hw/04cars.rda"
+#file_path <- "/D/04cars.rda"
+
+load("/D/04cars.rda")
+tmp = dat[,c(13,15)] # extract selected variables
+tmp = tmp[complete.cases(tmp),] # extracts complete cases
+tmp = as.data.frame(tmp)
+names(tmp) = c("hp","mpg") # abbreviate names
+
+# mpg <- get("mpg", envir = .GlobalEnv)
+#tmp$mpg
+#hp <- get("hp", envir = .GlobalEnv)
+
+# Assuming hp and mpg are vectors
+#data <- data.frame(hp, mpg)
+confBand(tmp$hp, tmp$mpg)
+```
+
+# There is a ngative linear relationship between hp and mpg.
+
+# Let n = 100 and draw x1, . . . , xn iid from Unif(0,1), which stay fixed in what follows. Repeat the following experiment N = 1000 times:
+# (i) Generate yi = 3 + 0.5xi + ϵi , i = 1, . . . , n, with ϵ1, . . . , ϵn iid N (0, 0.2).
+# (ii) Compute the 95% pointwise and simultaneous confidence bands and record whether they contain the true line or not.
+# Summarize the result of this numerical experiment by returning the proportion of times (out of N) that the pointwise and simultaneous confidence bands contained the true line. Explain the results.
+
+```{r}
+# Function to generate data and compute confidence bands
+simulate_experiment <- function(n, N, conf) {
+  contains_true_line_pointwise <- contains_true_line_simultaneous <- rep(0, N)
+
+  for (i in 1:N) {
+    # Generate xi
+    x <- runif(n, min = 0, max = 1)
+
+    # Generate epsilon_i
+    epsilon <- rnorm(n, mean = 0, sd = 0.2)
+
+    # Generate yi
+    y <- 3 + 0.5 * x + epsilon
+
+    # Fit linear model
+    linear_model <- lm(y ~ x)
+
+    # Compute pointwise confidence bands
+    ci_pointwise <- predict(linear_model, interval = "confidence", level = conf)
+   
+
+    # Compute simultaneous confidence bands
+    l = length(x)
+    alpha = 1 - conf
+    alpha1 = alpha/l
+    sim_CB <- predict(linear_model, interval = "confidence", level = 1-alpha1)
+
+
+    # Check if the true line (y = 3 + 0.5x) is within the bands
+    contains_true_line_pointwise[i] <- all(ci_pointwise[, "upr"] >= 3 + 0.5 * x & ci_pointwise[, "lwr"] <= 3 + 0.5 * x)
+    contains_true_line_simultaneous[i] <- all(sim_CB[, "lwr"] <= 3 + 0.5 * x & sim_CB[, "upr"] >= 3 + 0.5 * x)
+  }
+
+  return(list(
+    contains_true_line_pointwise = contains_true_line_pointwise,
+    contains_true_line_simultaneous = contains_true_line_simultaneous
+  ))
+}
+```
+
+```{r}
+
+# Set parameters
+n <- 100
+N <- 1000
+conf <- 0.95
+
+# Run simulation
+results <- simulate_experiment(n, N, conf)
+
+# Calculate proportions of containing the true line
+prop_pointwise <- mean(results$contains_true_line_pointwise)
+prop_simultaneous <- mean(results$contains_true_line_simultaneous)
+
+# Display results
+cat("Proportion of pointwise confidence bands containing the true line:", prop_pointwise, "\n")
+cat("Proportion of simultaneous confidence bands containing the true line:", prop_simultaneous, "\n")
+```
+# Because simultaneous confidence bands are larger than pointwise confidence bands therefore the proportion of simultaneous confidence bands containing the true line is bigger.

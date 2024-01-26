@@ -1,0 +1,213 @@
+---
+title: "DSC241 HW1"
+author:
+- Zihe Liu
+- A59026217
+date: "2024-01-25"
+output:
+  html_document:
+    df_print: paged
+  pdf_document:
+    latex_engine: xelatex
+---
+\includegraphics[angle=270]{/D/hw2.jpg}
+```{r}
+library("ggplot2")
+library("ggExtra")
+library("cowplot")
+library("MASS")
+library("car")
+library("ellipse")
+```
+# 2.(1) produce a plot or two providing (visual) evidence that the least squares intercept and slope are marginally normal.
+```{r}
+N <- 1000 
+sample_sizes <- c(50, 100, 200)
+sigma <- 0.5
+
+simulate_ols <- function(n) {
+  intercepts <- numeric(N)
+  slopes <- numeric(N)
+  
+  for (i in 1:N) {
+    x <- runif(n, min = -1, max = 1)  
+    y <- rnorm(n, mean = 3 + 0.5 * x, sd = sigma)  
+    model <- lm(y ~ x)  # Linear regression
+    intercepts[i] <- coef(model)[1]
+    slopes[i] <- coef(model)[2]
+  }
+  
+  list(intercepts = intercepts, slopes = slopes)
+}
+
+knitr::opts_chunk$set(echo = TRUE)
+# Plotting
+par(mfrow = c(3, 4))
+for (n in sample_sizes) {
+  results <- simulate_ols(n)
+ 
+  hist(results$intercepts, main = paste("Intercepts (n =", n, ")"),
+       xlab = "Intercept", breaks = 35, col = "blue")
+  hist(results$slopes, main = paste("Slopes (n =", n, ")"), 
+       xlab = "Slope", breaks = 35, col = "red")
+  
+  qqnorm(results$slopes,main = paste("Q-Q plot for slopes (n =", n, ")"))
+  qqnorm(results$intercepts,main = paste("Q-Q plot for intercepts (n =", n, ")"))
+
+}
+```
+# 2.(1) Produce another plot or two providing evidence that they are in fact jointly normal.
+```{r}
+# Function to create a joint plot with ggplot2 and ggExtra
+create_joint_plot <- function(results, n) {
+  # Create a data frame from the results
+  data <- data.frame(intercept = results$intercepts, slope = results$slopes)
+  
+  # Create the base ggplot
+  p <- ggplot(data, aes(x = intercept, y = slope)) +
+    geom_point(alpha = 0.4) +
+    theme_minimal() +
+    ggtitle(paste("Joint Distribution of Intercept and Slope (n =", n, ")")) +
+    xlab("Intercept") +
+    ylab("Slope")
+  
+  # Add marginal histograms
+  ggMarginal(p, type = "histogram")
+}
+```
+
+```{r}
+n <- 50
+results <- simulate_ols(50)
+data <- data.frame(intercept = results$intercepts, slope = results$slopes)
+plot50 <- ggplot(data, aes(x = intercept, y = slope)) +
+  geom_point(alpha = 0.2) +
+  ggtitle(paste("Joint Distribution (n =", n, ")")) +
+  xlab("Intercept") +
+  ylab("Slope")
+plot50_ <- ggMarginal(plot50, type = "histogram")
+
+n <- 100
+results <- simulate_ols(n)
+data <- data.frame(intercept = results$intercepts, slope = results$slopes)
+plot100 <- ggplot(data, aes(x = intercept, y = slope)) +
+  geom_point(alpha = 0.2) +
+  ggtitle(paste("Joint Distribution (n =", n, ")")) +
+  xlab("Intercept") +
+  ylab("Slope")
+plot100_ <- ggMarginal(plot100, type = "histogram")
+
+n <- 200
+results <- simulate_ols(n)
+data <- data.frame(intercept = results$intercepts, slope = results$slopes)
+plot200 <- ggplot(data, aes(x = intercept, y = slope)) +
+  geom_point(alpha = 0.2) +
+  ggtitle(paste("Joint Distribution (n =", n, ")")) +
+  xlab("Intercept") +
+  ylab("Slope")
+plot200_ <- ggMarginal(plot200, type = "histogram")
+
+combined_plots <- plot_grid(plot50_, plot100_, plot200_, ncol = 3)
+print(combined_plots)
+
+```
+
+# 2.(2) now with errors that have the t-distribution
+```{r}
+# Parameters
+N <- 1000  
+sample_sizes <- c(50, 100, 200)
+degrees_of_freedom <- c(2, 5, 10, 20)
+
+ols_tdist_error <- function(n, df) {
+  intercepts <- numeric(N)
+  slopes <- numeric(N)
+  
+  for (i in 1:N) {
+    x <- runif(n, min = -1, max = 1) 
+    errors <- rt(n, df = df)  # t-distributed errors
+    y <- 3 + 0.5 * x + errors  # with t-distributed errors
+    model <- lm(y ~ x)  
+    intercepts[i] <- coef(model)[1]
+    slopes[i] <- coef(model)[2]
+  }
+  list(intercepts = intercepts, slopes = slopes)
+}
+
+# Plotting
+par(mfrow = c(3, 2))  # Set up the plotting area
+for (df in degrees_of_freedom) {
+  for (n in sample_sizes) {
+    results <- ols_tdist_error(n, df)
+    hist(results$intercepts, main = paste("Intercepts (n =", n, ", df =", df, ")"),
+         xlab = "Intercept", breaks = 35, col = "blue")
+    hist(results$slopes, main = paste("Slopes (n =", n, ", df =", df, ")"),
+         xlab = "Slope", breaks = 35, col = "red")
+  }
+}
+```
+## As the degrees of freedom increase, the t-distribution approaches the normal distribution. With lower degrees of freedom, the t-distribution has fatter or heavier tails.
+
+# 3.(1)
+```{r}
+# Load the Boston dataset
+data(Boston)
+
+# Display the structure of the dataset to identify predictor types
+str(Boston)
+```
+```{r}
+# Omitting discrete predictor variables
+continuous_predictors <- Boston[, sapply(Boston, is.numeric)]
+lm_model <- lm(medv ~ ., data = continuous_predictors)
+# Display the summary of the linear model
+summary(lm_model)
+```
+## The model satisfy mean zero assumption
+```{r}
+# Check mean zero assumption
+mean_residuals <- mean(lm_model$residuals)
+cat("Mean of Residuals:", mean_residuals, "\n")
+```
+## The model don't satisfy homoscedasticity assumption very well. There's a non-linear relationship between fitted-values and residuals.
+```{r}
+# Check homoscedasticity assumption
+plot(lm_model, which = 1)  # Residuals vs Fitted plot
+```
+## according to QQ plot, the tails of a QQ plot are uplifted, which indicates that the residuals of the model deviate from the tails of a normal distribution. This may be due to the presence of outliers or a distribution with heavier or lighter tails.
+```{r}
+# Check normality assumption
+qqnorm(lm_model$residuals)
+qqline(lm_model$residuals)
+```
+## 3.(2) 381 is the most significant outlier in predictor. There may be data entry errors, measurement issues, or genuine anomalies and makes this observation the most significant one.
+```{r}
+plot(hatvalues(lm_model), type = "h")
+max_leverage_index <- which.max(hatvalues(lm_model))
+text(max_leverage_index, hatvalues(lm_model)[max_leverage_index], "Outlier", pos = 4, col = "red")
+cat(max_leverage_index)
+#p = 2
+#abline(h = 2 * (p + 1) / n, lty = 2,col = 'darkred')
+```
+
+## 3.(3) 369 is the most significant outlier in response. There may be data entry errors, measurement issues, or genuine anomalies and makes this observation the most significant one.
+```{r}
+plot(abs(rstudent(lm_model)), type = "h",ylab = "Externally Studentized Residuals (in absolute value)")
+# Identify the index of the observation with the highest externally studentized residual
+highest_leverage_index <- which.max(abs(rstudent(lm_model)))
+cat(highest_leverage_index)
+# Add a marker for the highest leverage point
+points(highest_leverage_index, abs(rstudent(lm_model))[highest_leverage_index], col = "red", pch = 16)
+```
+## 3.(4) 369 is the most influential observation. There may be data entry errors, measurement issues, or genuine anomalies and makes this observation the most significant one.
+```{r}
+# Cook's distances
+plot(lm_model, which=4, col="blue", lwd=2)
+```
+
+## 3.(5) According to the plot, there is obvious multicolinearity between tax column and rad column. And there also exist multicolinearity between other columns such as dis and indus. 
+```{r}
+# checking for multicolinearity via pairwise correlations b/w predictors
+round(cor(continuous_predictors) , 2) # rounded to 2 digits
+plotcorr(cor(continuous_predictors))
+```
