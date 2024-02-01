@@ -1,0 +1,118 @@
+---
+title: "DSC241 HW3"
+author:
+- Zihe Liu
+- A59026217
+date: "2024-01-31"
+output:
+  pdf_document:
+    latex_engine: xelatex
+  html_document:
+    df_print: paged
+---
+
+
+# 1.(1) Compute the condition number of the canonical design matrix. Produce a useful plot for visualizing the result of these computations. Offer brief comments.
+```{r}
+
+condition_number_calculation <- function(n,p,raw){
+  
+  x = runif(n)
+  X = poly(x, degree = p, raw = raw)
+  X = cbind(rep(1, n), X) 
+  d = svd(X)$d 
+  con = max(d)/min(d)
+  return (con)
+
+}
+
+raw <- TRUE
+maxP <- 20
+P <- seq(1, maxP)
+N <- c(30, 50, 100, 200, 500, 1000)
+
+for (i in 1:length(N)){
+  cons <- numeric(maxP)
+  for (j in 1:maxP){
+    cons[j] <- condition_number_calculation(N[i],P[j],raw)
+  }
+  plot(P, cons, main = paste("n=", N[i]), xlab = "polynomial of degree p", ylab = "condition number")
+}
+
+```
+
+## Comments: When p increases and n remains unchanged, condition number of the design matrix increases.
+
+## A higher condition number implies a matrix that is closer to singularity, and consequently, numerical computations may become less stable.
+
+# 1.(2) What is the condition number of X when using orthogonal polynomials instead?
+
+```{r}
+raw <- FALSE
+con_p <- numeric(length(N))
+for (i in 1:length(N)){
+  cons <- numeric(20)
+  for (j in 1:20){
+    cons[j] <- condition_number_calculation(N[i],P[j],raw)
+    print(cons[j])
+  }
+  con_p[i] <- cons[j]
+  plot(P, cons, main = paste("n=", N[i]), xlab = "polynomial of degree p", ylab = "condition number")
+}
+
+plot(N, con_p, xlab = "N", ylab = "condition number")
+```
+
+## Comments: When n remains unchanged, condition number doesn't change as p increase. When N increases, condition number increases.
+
+# 2.(1) piecewiseConstant function
+```{r}
+piecewiseConstant <- function(x, y, L, plot = TRUE){
+  K = quantile(x, seq(0, 1, len = 2^L), type=1)
+  len = 2^L - 1
+  pts = rep(0,len*2)
+  val = rep(0,len*2)
+  for (j in 1:len){
+    I = (K[j] < x)&(x <= K[j+1])
+    fit = lm(y[I] ~ 1)
+    pts[2*j-1] = K[j]
+    pts[2*j] = K[j+1]
+    val[2*j-1] = coef(fit)
+    val[2*j] = coef(fit)
+  }
+  fit0 <- list(pts = pts, val = val)
+
+  if (plot){
+    if (L == 2){
+      lines(fit0$pts, fit0$val, col="blue", lwd = 3)
+    }
+    
+    if (L == 3){
+      lines(fit0$pts, fit0$val, col="green", lwd = 3)
+    }
+    
+    if (L == 4){
+      lines(fit0$pts, fit0$val, col="red", lwd = 3)
+    }
+  }
+    
+}
+```
+# 2.(2) Apply the function to explaining City Mpg as a piecewise constant function of Horsepower in the 04cars dataset. 
+```{r}
+## get the data and plot scatter plot
+load("/D/04cars.rda")
+tmp = dat[,c(13,14)] # "Horsepower","City_MPG"
+tmp = tmp[complete.cases(tmp),]
+tmp = as.data.frame(tmp)
+
+x = tmp$Horsepower
+y = tmp$City_MPG
+
+par(mfrow = c(1, 1))
+plot(x, y, main = "Piecewise constant fit", xlab = "Horsepower", ylab = "City MPG")
+for (i in 2:4){
+  piecewiseConstant(x, y, i, plot = TRUE)
+}
+legend("topright", legend = c("L=2", "L=3", "L=4"), col = c("blue", "green", "red"), lwd = 3)
+```
