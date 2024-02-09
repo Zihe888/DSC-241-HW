@@ -1,0 +1,214 @@
+---
+title: "hw4"
+author: "Zihe Liu"
+date: "2024-02-08"
+output: pdf_document
+---
+
+```{r}
+library("MASS")
+install.packages("quantreg")
+library(quantreg)
+dat = Boston
+str(Boston)
+```
+
+# 1.(a)
+```{r}
+## side-by-side boxplots
+boxplot(medv ~ chas, data = Boston, xlab = "CHAS (Charles River)", ylab = "MEDV (Median value of owner-occupied homes)", col = c("skyblue", "lightgreen"), main = "Boxplot of MEDV by CHAS")
+```
+## The difference between the median value of medv when chas value is different.
+
+```{r}
+
+# Fit a linear regression model
+model <- lm(medv ~ chas, data = Boston)
+
+# Output summary of the model
+summary(model)
+
+# Perform ANOVA test
+anova_result <- anova(model)
+anova_result
+
+```
+## F-test in the ANOVA table tests whether the model fits significantly better with the predictor variable (chas) than the intercept-only model. According to the result, the model is statistically significant (p-value is less than the chosen significance level -- 0.05). Therefore, model with chas is accepted. the result is similar with the result of boxplots.
+
+# 1.(b)
+```{r}
+# Create the boxplot
+boxplot_data_rad <- boxplot(medv ~ rad, data = Boston, xlab = "RAD (Index of accessibility to radial highways)", ylab = "MEDV (Median value of owner-occupied homes)", main = "Boxplot of MEDV by RAD")
+
+# Extract median values
+median_values_rad <- boxplot_data_rad$stats[3, ]
+
+# Print median values
+median_values_rad
+
+# Fit a linear regression model
+model <- lm(medv ~ rad, data = Boston)
+
+# Output summary of the model
+summary(model)
+
+# Perform ANOVA test
+anova_result <- anova(model)
+anova_result
+
+```
+
+## There's a difference between the median value of MEDV when RAD value is different.
+
+## According to the result, the model is statistically significant (p-value is less than the chosen significance level -- 0.05). Therefore, the result is similar with the result of boxplots.
+
+# 1.(c)
+```{r}
+boxplot(medv~chas * rad, 
+        data = Boston,
+        xlab = "CHAS x RAD", ylab = "MEDV",
+        main = "Boxplot of MEDV by CHAS x RAD")
+```
+## mdev varies largely across different intersection of chas and rad.
+
+## Below is the interaction plots.
+```{r}
+# Create an interaction plot
+interaction.plot(Boston$rad, Boston$chas, Boston$medv, xlab = "RAD", ylab = "MEDV", fixed = TRUE, col = 1:9, lwd = 2, main = "Interaction Plot of MEDV by CHAS and RAD 1")
+interaction.plot(Boston$chas, Boston$rad, Boston$medv, xlab = "CHAS", ylab = "MEDV", fixed = TRUE, col = 1:9, lwd = 2, main = "Interaction Plot of MEDV by CHAS and RAD 2")
+```
+## In the "Interaction Plot of MEDV by CHAS and RAD 1", there is a difference in the relationship of chas and medv in different rad. Therefore, there is intercection effect of chas and rad.
+
+## In the "Interaction Plot of MEDV by CHAS and RAD 2", there is a difference in the relationship of rad and medv in different chas. Though the diffence of rad and medv when rad equals to 3~8 and chas = 1 is not that large, there is still some difference. Therefore, there is intercection effect of chas and rad.
+
+```{r}
+# Fit a model with interactions
+model_interaction <- lm(medv ~ chas * rad, data = Boston)
+
+# Output ANOVA table
+anova_result_interaction <- anova(model_interaction)
+anova_result_interaction
+```
+## According to anova_result_interaction result, the interaction term is significant, which means there is a significant interaction effect between chas and rad. Besides, chas and rad term are also significant, which means there are also significant effects of both chas and rad.
+
+## According to 'chas and medv model result' and 'rad and medv model result', there are significant effects of both chas and rad.
+# 1.(c)
+```{r}
+# Create an interaction plot
+interaction.plot(Boston$lstat, Boston$chas, Boston$medv,
+                 xlab = "LSTAT", ylab = "MEDV",
+                 trace.label = "CHAS", legend.label = "CHAS",
+                 main = "Interaction Plot of MEDV by LSTAT and CHAS")
+
+```
+
+
+```{r}
+# Fit a linear regression model with interaction term
+model_interaction <- lm(medv ~ lstat * chas, data = Boston)
+
+# Perform ANOVA test for interaction effect
+anova_result_interaction <- anova(model_interaction)
+anova_result_interaction
+```
+
+# 1. (d)
+```{r}
+# Load libraries
+library(ggplot2)
+library(dplyr)
+
+# Load Boston dataset
+data("Boston")
+
+# Create a new data frame with necessary variables
+df <- Boston %>%
+  select(medv, lstat, chas)
+
+# Convert CHAS to factor
+df$chas <- factor(df$chas, levels = c(0, 1), labels = c("Not Bordering", "Bordering"))
+
+# Create a scatter plot
+ggplot(df, aes(x = lstat, y = medv, color = chas)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(x = "Percentage of Lower Status Population (LSTAT)",
+       y = "Median Property Value (MEDV)",
+       title = "Relationship between LSTAT, MEDV, and CHAS") +
+  scale_color_manual(values = c("blue", "red")) +
+  theme_minimal()
+
+```
+
+## I think it depends on whether the area borders with the Charles River. In the plot, the median property value of area (red line) that border the Carles River decreases faster than the area not border the Charles River (blue line). 
+
+```{r}
+# Fit linear regression model without interaction term
+lm_no_interaction <- lm(medv ~ lstat + chas, data = Boston)
+
+# Fit linear regression model with interaction term
+lm_interaction <- lm(medv ~ lstat * chas, data = Boston)
+
+# Perform ANOVA to compare models
+anova_results <- anova(lm_no_interaction, lm_interaction)
+
+# Print ANOVA results
+print(anova_results)
+
+```
+## Null Hypothesis Assumption(H0): The slope of medv with respect to lstat is the same when chas equals 0 as when chas equals 1.
+
+## Alternative Hypothesis (H1): The slope of medv with respect to lstat differs when chas equals 0 compared to when chas equals 1.
+
+## Therefore, I build a hypothesis test by comparing models with and without the interaction term between lstat and chas. If the comparison reveals significant differences between these models, we will reject the null hypothesis, indicating evidence that the slope of medv with respect to lstat differs depending on whether chas equals 0 or 1.
+
+## According to the ANOVA result, we reject the null hypothesis. Thus, we can conclude that the rate of decrease depend on whether the area borders the Charles River.
+
+# 2.(a)
+
+```{r}
+# Fit a polynomial model of degree 3 by least squares
+m.lm <- lm(medv ~ poly(lstat, 3, raw = TRUE), data = Boston)
+summary(m.lm)
+```
+
+# 2.(b)
+```{r}
+m.l1 = rq(medv ~ poly(lstat, 3, raw = TRUE), data = Boston)
+summary(m.l1)
+cat("----------------------------------------------------")
+m.huber = rlm(medv ~ poly(lstat, 3),  data = Boston, psi = psi.huber)
+summary(m.huber)
+cat("----------------------------------------------------")
+m.lms = lmsreg(medv ~ poly(lstat, 3),  data = Boston)
+summary(m.lms)
+cat("----------------------------------------------------")
+m.lts = ltsreg(medv ~ poly(lstat, 3),  data = Boston)
+summary(m.lts)
+```
+
+# 2.(c)
+```{r}
+# Generate a sequence of hp values for prediction
+lstat_seq <- seq(min(dat$lstat), max(dat$lstat), length.out = 100)
+
+# Predict the mpg values using the fitted models
+medv_pred_lm <- predict(m.lm, newdata = data.frame(lstat = lstat_seq))
+medv_pred_l1 <- predict(m.l1, newdata = data.frame(lstat = lstat_seq))
+medv_pred_huber <- predict(m.huber, newdata = data.frame(lstat = lstat_seq))
+medv_pred_lms <- predict(m.lms, newdata = data.frame(lstat = lstat_seq))
+medv_pred_lts <- predict(m.lts, newdata = data.frame(lstat = lstat_seq))
+
+# Scatter plot of the data points
+plot(dat$medv, dat$lstat, pch = 16)
+ 
+# Add regression lines to the plot with different colors
+lines(lstat_seq, medv_pred_lm, col = "blue", lwd = 2, lty = 1)       # Linear Model (blue, solid)
+lines(lstat_seq, medv_pred_l1, col = "purple", lwd = 2, lty = 2)     # Quantile Regression (purple, dashed)
+lines(lstat_seq, medv_pred_huber, col = "green", lwd = 2, lty = 3)    # Huber M-estimation (green, dashed)
+lines(lstat_seq, medv_pred_lms, col = "black", lwd = 2, lty = 4)      # Least Median of Squares (black, dashed)
+lines(lstat_seq, medv_pred_lts, col = "orange", lwd = 2, lty = 5)     # Least Trimmed Squares (orange, dashed)
+```
+
+
+
